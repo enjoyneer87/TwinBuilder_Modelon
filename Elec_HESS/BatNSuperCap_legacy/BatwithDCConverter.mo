@@ -1,0 +1,36 @@
+within BatNSuperCap_legacy;
+model BatwithDCConverter
+    .Electrification.Batteries.Examples.Applications.ElectricCar battery(limitActionSoC = .Modelon.Types.FaultAction.Terminate,SoC_min = 0.1,SoC_max = 1.0,SOC_start = 0.9,fixed_temperature = true,display_name = true,enable_control_bus = true,enable_thermal_port = false) annotation(Placement(transformation(extent = {{-72.07,-10.03},{-104.07,21.97}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Machines.Examples.Applications.ElectricCar machine(redeclare replaceable .Electrification.Machines.Control.MultiMode controller(external_torque = true,external_mode = true,external_power = true),display_name = true,fixed_temperature = true,enable_thermal_port = false,enable_mount = false) annotation(Placement(transformation(extent = {{4.61,-9.78},{36.61,22.22}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Mechanical.SimpleChassis1D chassis(CrConstant = 0.00845431,rho = 1,Cd = 0.339628,A = 2.25,d = 0.73196,KX = 98300,Rl = 0.335901,lambda = 0.561118,ideal_wheel = false,R = 0.35155,m = 1800) annotation(Placement(transformation(extent = {{76.63,-10.03},{108.63,21.97}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Machines.Control.Signals.tau_ref tau_ref(id = machine.id) annotation(Placement(transformation(extent = {{-4.0,4.0},{4.0,-4.0}},rotation = 180.0,origin = {17.84,63.84})));
+    .Electrification.Electrical.DCInit vInitA(stateSelect = StateSelect.avoid,init_steady = true) annotation(Placement(transformation(extent = {{-96.83,-52.39},{-76.83,-32.39}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Utilities.Blocks.Driver driver(repeat = true,redeclare .Electrification.Utilities.DriveCycles.WLTP driveCycle,torque_output = false,Ti = 2,k = 1) annotation(Placement(transformation(extent = {{99.84,53.64},{79.84,73.64}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Mechanical.IdealBrake brakes(enable_mount = false) annotation(Placement(transformation(extent = {{44.63,-6.03},{68.63,17.97}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Utilities.Blocks.TorqueArbitration torqueArbitration(regen_torque = 300,tauMax = machine.core.limits.tau_max_mot,number_of_motors_rear = 1,number_of_motors_front = 0) annotation(Placement(transformation(extent = {{63.96,53.7},{43.96,73.7}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Converters.Examples.AverageStepUpDown converterBat(enable_thermal_port = false,display_name = true,fixed_temperature = true,redeclare replaceable .Electrification.Converters.Control.Power controller(external_pwr_b = false),electrical_a(v_start_fixed = false,v_start = 0),electrical_b(v_start_fixed = true,v_start = 400),redeclare replaceable .Electrification.Converters.Core.PassThrough core) annotation(Placement(transformation(extent = {{-46.62,-10.29},{-14.62,21.71}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Electrical.DCInit vInitA2(init_steady = true,stateSelect = StateSelect.avoid) annotation(Placement(transformation(extent = {{-43.63,-51.84},{-23.63,-31.84}},rotation = 0.0,origin = {0.0,0.0})));
+    .Electrification.Machines.Control.Signals.mode_ref mode_ref2(id = machine.id,causality = .Electrification.Utilities.Types.Causality.Input,mode = .Electrification.Utilities.Types.MachineControlMode.Disabled) annotation(Placement(transformation(extent = {{-25.7,45.99},{-17.7,53.99}},rotation = 0.0,origin = {0.0,0.0})));
+    .Modelica.Blocks.Math.BooleanToInteger generatorMode2(integerFalse = Integer(.Electrification.Utilities.Types.MachineControlMode.MechPower),integerTrue = Integer(.Electrification.Utilities.Types.MachineControlMode.Torque)) annotation(Placement(transformation(extent = {{-57.87,43.95},{-45.87,55.95}},rotation = 0.0,origin = {0.0,0.0})));
+    .Modelica.Blocks.Logical.Hysteresis hysteresis2(uLow = -0.01,uHigh = 0.1,pre_y_start = true) annotation(Placement(transformation(extent = {{-47.0,71.47},{-59.0,83.47}},rotation = 0.0,origin = {0.0,0.0})));
+equation
+    connect(chassis.velocity,driver.speed_m) annotation(Line(points = {{92.63,23.57},{89.84,23.57},{89.84,52.64}},color = {0,0,127}));
+    connect(vInitA.plug_a,battery.plug_a) annotation(Line(points = {{-76.83,-42.39},{-58.48,-42.39},{-58.48,5.97},{-72.07,5.97}},color = {255,128,0}));
+    connect(tau_ref.systemBus,machine.controlBus) annotation(Line(points = {{13.84,63.84},{-5.96,63.84},{-5.96,29.84},{7.81,29.84},{7.81,22.22}},color = {240,170,40},pattern = LinePattern.Dot));
+    connect(torqueArbitration.tau_brake_ref,brakes.u) annotation(Line(points = {{42.96,57.7},{33.84,57.7},{33.84,39.84},{56.63,39.84},{56.63,19.17}},color = {0,0,127}));
+    connect(torqueArbitration.veh_vel_x,chassis.velocity) annotation(Line(points = {{53.96,51.7},{53.96,45.84},{92.63,45.84},{92.63,23.57}},color = {0,0,127}));
+    connect(battery.controlBus,machine.controlBus) annotation(Line(points = {{-75.27,21.97},{7.81,21.97},{7.81,22.22}},color = {240,170,40},pattern = LinePattern.Dot));
+    connect(torqueArbitration.tau_ref_rear[1],tau_ref.u_r) annotation(Line(points = {{42.96,63.7},{23.84,63.7},{23.84,63.84}},color = {0,0,127}));
+    connect(machine.flange,chassis.flangeR) annotation(Line(points = {{36.61,6.22},{76.63,6.22},{76.63,5.97}},color = {0,0,0}));
+    connect(brakes.flange_a,chassis.flangeR) annotation(Line(points = {{56.63,5.97},{76.63,5.97}},color = {0,0,0}));
+    connect(driver.acc_cmd,torqueArbitration.acc_cmd) annotation(Line(points = {{78.84,69.64},{65.96,69.64},{65.96,69.7}},color = {0,0,127}));
+    connect(driver.brk_cmd,torqueArbitration.brk_cmd) annotation(Line(points = {{78.84,57.64},{65.96,57.64},{65.96,57.7}},color = {0,0,127}));
+    connect(battery.plug_a,converterBat.plug_a) annotation(Line(points = {{-72.07,5.97},{-57.54,5.97},{-57.54,5.71},{-46.62,5.71}},color = {255,128,0}));
+    connect(converterBat.plug_b,machine.plug_a) annotation(Line(points = {{-14.62,5.71},{-7.56,5.71},{-7.56,6.22},{4.61,6.22}},color = {255,128,0}));
+    connect(vInitA2.plug_a,converterBat.plug_b) annotation(Line(points = {{-23.63,-41.84},{-14.62,-41.84},{-14.62,5.71}},color = {255,128,0}));
+    connect(generatorMode2.y,mode_ref2.u_i) annotation(Line(points = {{-45.27,49.95},{-37.54,49.95},{-37.54,49.99},{-27.7,49.99}},color = {255,127,0}));
+    connect(mode_ref2.systemBus,machine.controlBus) annotation(Line(points = {{-17.7,49.99},{7.81,49.99},{7.81,22.22}},color = {240,170,40},pattern = LinePattern.Dot));
+    connect(hysteresis2.y,generatorMode2.u) annotation(Line(points = {{-59.6,77.47},{-65.6,77.47},{-65.6,49.95},{-59.07,49.95}},color = {255,0,255}));
+    connect(torqueArbitration.tau_ref_rear[1],hysteresis2.u) annotation(Line(points = {{42.96,63.7},{39.41,63.7},{39.41,77.47},{-45.8,77.47}},color = {0,0,127}));
+    annotation(Icon(coordinateSystem(preserveAspectRatio = false,extent = {{-100.0,-100.0},{100.0,100.0}}),graphics = {Rectangle(lineColor={0,0,0},fillColor={230,230,230},fillPattern=FillPattern.Solid,extent={{-100.0,-100.0},{100.0,100.0}}),Text(lineColor={0,0,255},extent={{-150,150},{150,110}},textString="%name")}));
+end BatwithDCConverter;
