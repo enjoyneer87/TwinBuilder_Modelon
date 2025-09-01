@@ -118,8 +118,8 @@ Table 데이터는 OCV(개방 회로 전압)와 SOC(충전 상태)에 따른 임
 <li>The voltage limits have been adjusted to a smaller charge window than the lab data, corresponding to a nominal 2.75 Ah (instead of the 2.9 Ah of the lab data). The SOC window of the OCV and impedance tables have been adjusted to match this range of charge (the <code>ref_SoC_#</code> parameters).</li>
 </ul>
 <h4>References</h4>
-<p>Kollmeyer, Phillip (2018), <em>Panasonic 18650PF Li-ion Battery Data</em>, Mendeley Data, V1<br />
-<a href=\"https://doi.org/10.17632/wykht8y7tg.1\">https://doi.org/10.17632/wykht8y7tg.1</a></p>
+<p>Henry Miniguano (2021), <em>Li-Ion Battery and Supercapacitor Modeling for Electric Vehicles Based on Pulse – Pseudo Random Binary Sequence, V1<br />
+<a href=\"https://ieeexplore.ieee.org/abstract/document/9537627/?casa_token=qZC2vWPOBSkAAAAA:hJUsiKxSNuj-2m9JgxYCntMcoONHODQYrqsfGdkYQcwiknzvZJAzcUzZdSv7t5vJurMH_2xMkrhJjgE</a></p>
 </html>")); 
 
 end SCap_Core_TABULAR_Ideal_2nd_Frompaper;

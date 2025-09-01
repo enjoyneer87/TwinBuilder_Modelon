@@ -33,6 +33,8 @@ model EMS_Allocator_GStack
   parameter SI.Time T_alpha = 0.03 "alpha LPF time";
   parameter Real alpha_min = 0.0;
   parameter Boolean visualConnections = true "Enable visual connection annotations";
+  // 소스(배터리/SC)의 한계를 외부에서 덮어쓰지 않도록 기본적으로 비활성화
+  parameter Boolean drive_source_limits = false "Publish per-source limits to sources via SetComponentLimits (may conflict with internal limits)";
 
   // ===== 외부 입력 =====
   Modelica.Blocks.Interfaces.RealInput P_dem "Load request (+discharge/-charge) [W]";
@@ -59,9 +61,9 @@ model EMS_Allocator_GStack
   Electrification.Control.Limits.GetComponentVIP vipSrc[N]
     annotation (Placement(transformation(extent={{-100,-40},{-68,-8}})));
   
-  // ===== 소스별 지령 전달 =====
+  // ===== 소스별 지령 전달 (옵션) =====
   Electrification.Control.Limits.SetComponentLimits setSrc[N](
-    each i_max_in=Modelica.Constants.inf, each i_max_out=Modelica.Constants.inf)
+    each i_max_in=Modelica.Constants.inf, each i_max_out=Modelica.Constants.inf) if drive_source_limits
     annotation (Placement(transformation(extent={{-68,-80},{-36,-48}})));
 
   // ===== GenerousStack (방전/충전) =====
@@ -149,9 +151,11 @@ equation
       annotation (Line(points={{-68,36},{-50,36},{-50,80},{-26,80}}, color={240,170,40}, pattern=LinePattern.Dot, thickness=0.5));
     connect(vipSrc[i].componentBus, busSrc[i].componentBus)
       annotation (Line(points={{-84,-24},{-50,-24},{-50,80},{-26,80}}, color={240,170,40}, pattern=LinePattern.Dot, thickness=0.5));
-    // 소스별 지령 전달
-    connect(setSrc[i].componentBus, busSrc[i].componentBus)
-      annotation (Line(points={{-36,-64},{-30,-64},{-30,80},{-26,80}}, color={240,170,40}, pattern=LinePattern.Dot, thickness=0.5));
+    // 소스별 지령 전달 (옵션)
+    if drive_source_limits then
+      connect(setSrc[i].componentBus, busSrc[i].componentBus)
+        annotation (Line(points={{-36,-64},{-30,-64},{-30,80},{-26,80}}, color={240,170,40}, pattern=LinePattern.Dot, thickness=0.5));
+    end if;
   end for;
 
 
@@ -225,13 +229,15 @@ equation
   connect(setLoad.p_max_out, p_max_out_load);
   connect(setLoad.p_max_in,  p_max_in_load);
 
-  // === 소스별 지령 전달 (P_cmd, i_ref -> 컴포넌트)
-  for i in 1:N loop
-    connect(setSrc[i].p_max_out, max(0, P_cmd[i]));   // 방전 지령
-    connect(setSrc[i].p_max_in,  max(0, -P_cmd[i]));  // 충전 지령
-    connect(setSrc[i].i_max_out, max(0, i_ref[i]));   // 방전 전류 지령
-    connect(setSrc[i].i_max_in,  max(0, -i_ref[i]));  // 충전 전류 지령
-  end for;
+  // === 소스별 지령 전달 (P_cmd, i_ref -> 컴포넌트) (옵션)
+  if drive_source_limits then
+    for i in 1:N loop
+      connect(setSrc[i].p_max_out, max(0, P_cmd[i]));   // 방전 지령
+      connect(setSrc[i].p_max_in,  max(0, -P_cmd[i]));  // 충전 지령
+      connect(setSrc[i].i_max_out, max(0, i_ref[i]));   // 방전 전류 지령
+      connect(setSrc[i].i_max_in,  max(0, -i_ref[i]));  // 충전 전류 지령
+    end for;
+  end if;
 
   // === alpha 및 미서빙 전력
   alphaFilt.u = max(alpha_min,

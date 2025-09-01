@@ -119,7 +119,7 @@ model EMS_Unified
     p_alloc_in  = pInAlloc.p_allocated,
     p_used_out  = -pInAlloc.sumNegative.y,
     p_used_in   = -pOutAlloc.sumNegative.y,
-    p_in        = {demandPassthrough.y, 0},
+    p_in        = demandPassthrough.y,
     final N     = N)
     annotation (Dialog(tab="Records"), choicesAllMatching=true);
 
@@ -149,7 +149,7 @@ protected
  // === 내부 모드별 P_dem 생성 ===
   SI.Power P_dem_drive; // 주행 디레이팅 결과
   SI.Power P_dem_chg;   // 충전 스케줄러 결과(음수)
-  SI.Power P_demand;    // 최종 채택 (P_dem → P_demand로 변경)
+  SI.Power P_dem;       // 최종 채택
   
   // 분배 및 제한 관련 변수
   .Modelica.Units.SI.Power P_alloc[N];
@@ -185,11 +185,11 @@ protected
   Real alpha_v, alpha_tot;
   
   // RealExpression 블록(다이어그램 가시화용)
-  .Modelica.Blocks.Sources.RealExpression demandPassthrough(y=P_demand)
+  .Modelica.Blocks.Sources.RealExpression demandPassthrough(y=P_dem)
     annotation (Placement(transformation(extent={{-120,60},{-100,80}})));
-  .Modelica.Blocks.Sources.RealExpression dischargeAvailable(y=max(P_demand, 0))
+  .Modelica.Blocks.Sources.RealExpression dischargeAvailable(y=max(P_dem, 0))
     annotation (Placement(transformation(extent={{-40,40},{-20,60}})));
-  .Modelica.Blocks.Sources.RealExpression chargeAvailable(y=max(-P_demand, 0))
+  .Modelica.Blocks.Sources.RealExpression chargeAvailable(y=max(-P_dem, 0))
     annotation (Placement(transformation(extent={{-38.86,-0.57},{-18.86,19.43}},rotation = 0.0,origin = {0.0,0.0})));
 
 equation
@@ -245,15 +245,15 @@ equation
 
 
   // === 편의 변수
-  sgn      = if P_demand >= 0 then 1.0 else -1.0;
-  P_dem_mag = abs(P_demand);
+  sgn      = if P_dem >= 0 then 1.0 else -1.0;
+  P_dem_mag = abs(P_dem);
 
   // === 소스별 동적 한계 (min(pMax, η·V·iMax))
   for i in 1:N loop
-    cap_out[i] = min( if srcLimits[i].pMaxOutSignal then srcLimits[i].p_max_out else 1e6,
-                      eta[i]*V_bus*(if srcLimits[i].iMaxOutSignal then srcLimits[i].i_max_out else 1e3) );
-    cap_in[i]  = min( if srcLimits[i].pMaxInSignal then srcLimits[i].p_max_in else 1e6,
-                      eta[i]*V_bus*(if srcLimits[i].iMaxInSignal then srcLimits[i].i_max_in else 1e3) );
+    cap_out[i] = min( max(0, srcLimits[i].p_max_out),
+                      eta[i]*V_bus*max(0, srcLimits[i].i_max_out) );
+    cap_in[i]  = min( max(0, srcLimits[i].p_max_in),
+                      eta[i]*V_bus*max(0, srcLimits[i].i_max_in)  );
     cap_sign[i] = if sgn>=0 then cap_out[i] else cap_in[i];
   end for;
 
@@ -345,33 +345,33 @@ equation
   // (C) 최종 P_dem 선택 & 분배·출력
   // ----------------------------------------------------------------
 
-  P_demand = if isCharging then P_dem_chg 
+  P_dem = if isCharging then P_dem_chg 
           else P_dem_drive;
 
 
   // alpha_load (정보 제공용): 허용/요청 비 기반(절댓값)
-  P_dem_mag = abs(P_demand);
+  P_dem_mag = abs(P_dem);
   alphaFilt.u = min(1.0,
-                    (if P_demand >= 0 then p_max_out_load else p_max_in_load)
+                    (if P_dem >= 0 then p_max_out_load else p_max_in_load)
                     / max(1e-6, P_dem_mag));
   alpha_load = alphaFilt.y;
 
   // 부하로 내려줄 최종 power ref
-  P_load_cmd = P_demand;
+  P_load_cmd = P_dem;
 
   // GenerousStack p_available
-  pOutAlloc.p_available = max(P_demand, 0);
-  pInAlloc.p_available  = max(-P_demand, 0);
+  pOutAlloc.p_available = max(P_dem, 0);
+  pInAlloc.p_available  = max(-P_dem, 0);
 
   // 소스별 분배 → 동적캡 → Slew → P_cmd, i_ref
-  sgn = if P_demand >= 0 then 1.0 else -1.0;
+  sgn = if P_dem >= 0 then 1.0 else -1.0;
   for i in 1:N loop
     cap_sign[i] = if sgn>=0 then cap_out[i] else cap_in[i];
 
     P_alloc[i] = if sgn>=0 then +pOutAlloc.p_allocated[i]
                                    else -pInAlloc.p_allocated[i];
 
-    P_tgt[i] = min(cap_sign[i], max(-cap_sign[i], P_alloc[i]));
+    P_tgt[i] = min(cap_sign[i], max(-cap_sign[i], P_alloc));
 
     der(P_state[i]) = noEvent(
       if (P_tgt[i]  - P_state[i]) >= 0 then
